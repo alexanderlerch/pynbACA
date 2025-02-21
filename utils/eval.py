@@ -1,6 +1,7 @@
 import numpy as np
 from pyACA import ToolFreq2Midi
 
+#TODO function and variable naming as mentioned in the other comments
 def eval_pitchtrack(estimate_in_hz, groundtruth_in_hz, mode='pitch'):
    
     estimate = np.asarray(estimate_in_hz)
