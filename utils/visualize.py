@@ -86,24 +86,30 @@ def visualizePitchTracking(gt_time, gt_freq, est_time=None, est_freq=None):
 import time
 from utils.eval import eval_pitchtrack
 
+def hz_to_cents(freq, ref=1.0):
+    freq = np.asarray(freq)
+    # Where freq > 0, compute cents; otherwise, return NaN.
+    cents = np.where(freq > 0, 1200 * np.log2(freq / ref), np.nan)
+    return cents
+
 def visualizeMultiPitchAlgo(wav, sr, gt_qfreq, 
-                               algorithms=None,
-                               iBlockLength=1024, iHopLength=512):
- 
-    
+                            algorithms=None,
+                            iBlockLength=1024, iHopLength=512,
+                            ref_freq=1.0):
+  
     if algorithms is None:
         algorithms = ['SpectralAcf', 'SpectralHps', 'TimeAcf', 
                       'TimeAmdf', 'TimeAuditory', 'TimeZeroCrossings']
     
-    n_algos = len(algorithms)
-    nrows = 2
-    ncols = 3
-    plt.figure(figsize=(18, 10))
+    results = []  # Will hold results for each algorithm
+    global_min = float('inf')
+    global_max = float('-inf')
     
-    # Ensure ground truth is a numpy array
+    # Convert ground truth to numpy array (in Hz) and then to cents
     gt_qfreq = np.asarray(gt_qfreq)
+    gt_cents = hz_to_cents(gt_qfreq, ref=ref_freq)
     
-    for idx, algo in enumerate(algorithms):
+    for algo in algorithms:
         # Compute pitch and measure runtime
         start_time = time.time()
         est_freq, est_time = pyACA.computePitch(algo, wav, sr, 
@@ -111,13 +117,11 @@ def visualizeMultiPitchAlgo(wav, sr, gt_qfreq,
                                                 iHopLength=iHopLength)
         runtime = time.time() - start_time
         
-        # Compute RMS error in cents between estimated and ground truth pitch
+        # Compute RMS error in cents (only considers frames where both are nonzero)
         rms_error = eval_pitchtrack(estimate_in_hz=est_freq, 
                                     groundtruth_in_hz=gt_qfreq, 
                                     mode='pitch')
         
-        # Create copies for plotting that replace points with np.nan where either is zero.
-        # This prevents connecting segments across gaps.
         plot_gt = np.copy(gt_qfreq)
         plot_est = np.copy(est_freq)
         mask = (gt_qfreq == 0) | (est_freq == 0)
@@ -125,13 +129,41 @@ def visualizeMultiPitchAlgo(wav, sr, gt_qfreq,
             plot_gt[mask] = np.nan
             plot_est[mask] = np.nan
         
-        # Plot the pitch contours
+        # Convert both to cents using the helper function.
+        plot_gt_cents = hz_to_cents(plot_gt, ref=ref_freq)
+        plot_est_cents = hz_to_cents(plot_est, ref=ref_freq)
+        
+        # Update global y-axis limits (ignoring nans)
+        current_min = np.nanmin(np.concatenate((plot_gt_cents, plot_est_cents)))
+        current_max = np.nanmax(np.concatenate((plot_gt_cents, plot_est_cents)))
+        global_min = min(global_min, current_min)
+        global_max = max(global_max, current_max)
+        
+        results.append({
+            'algo': algo,
+            'runtime': runtime,
+            'est_time': est_time,
+            'plot_est_cents': plot_est_cents,
+            'plot_gt_cents': plot_gt_cents,
+            'rms_error': rms_error
+        })
+    
+    if global_min == global_max:
+        global_min -= 100
+        global_max += 100
+    
+    nrows = 2
+    ncols = 3
+    plt.figure(figsize=(18, 10))
+    
+    for idx, res in enumerate(results):
         ax = plt.subplot(nrows, ncols, idx + 1)
-        ax.plot(est_time, plot_est, label='Estimated', color='b')
-        ax.plot(est_time, plot_gt, label='Ground Truth', color='r', linestyle='--')
+        ax.plot(res['est_time'], res['plot_est_cents'], label='Estimated', color='b')
+        ax.plot(res['est_time'], res['plot_gt_cents'], label='Ground Truth', color='r', linestyle='--')
         ax.set_xlabel('Time (s)')
-        ax.set_ylabel('Frequency (Hz)')
-        ax.set_title(f"{algo}\nRMS Error: {rms_error:.2f} cents, Run time: {runtime:.3f} s")
+        ax.set_ylabel('Pitch (cents)')
+        ax.set_ylim(global_min, global_max)
+        ax.set_title(f"{res['algo']}\nRMS Error: {res['rms_error']:.2f} cents, Run time: {res['runtime']:.3f} s")
         ax.legend()
         ax.grid(True)
     
