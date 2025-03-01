@@ -1,6 +1,7 @@
 import timeit
 import numpy as np
 
+#TODO: use consistent function names, pyACA style would be compareRuntime, generateSinWave
 def compare_runtime(func1, func2, input_sequence, num_runs=10):
     """
     Compare the execution time of two functions with the same input.
@@ -30,7 +31,7 @@ def compare_runtime(func1, func2, input_sequence, num_runs=10):
     return time_func1, time_func2
 
 
-
+#TODO: be sure to use consistent parameter names (see frequency vs. sr), also preferably add unit, e.g., freqInHz, durationInS, etc.
 def sineWavGen(frequency=440, duration=2.0, sr=44100, iBlockLength=1024, iHopLength=512):
     # Create time vector for the entire signal
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)

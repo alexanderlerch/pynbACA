@@ -6,6 +6,7 @@ import os
 import pyACA
 
 # TODO license issue for download scripts: https://www.upf.edu/web/mtg/tonas
+#TODO AL: it might be easiest to just use the files that I am always using from the slides: https://github.com/alexanderlerch/ACA-Slides/tree/2nd_edition/audio, particularly sax_example.mp3 
 
 class PitchDataset(Dataset):
     def __init__(self, root='asset/pitch'):
