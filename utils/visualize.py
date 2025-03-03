@@ -1,72 +1,132 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pyACA
+import matplotlib.animation as animation
 
+# def visualAudioBlock(blockTime, origAudio, window_size, fs):
+#     duration = 0.5
+#     offset = 1.0
+#     window_size_in_second = window_size / fs
+#     n_frame = int(fs * duration)
+#     t = np.linspace(offset, offset + duration, n_frame, endpoint=False)
+    
+#     # Extract the audio segment for plotting
+#     audio_segment = origAudio[int(offset * fs):int(offset * fs + n_frame)]
+
+#     # Plot duplicated waveforms
+#     fig, axes = plt.subplots(2, 1, figsize=(24, 8), sharex=True)
+#     toggle = False
+#     for idx, ax in enumerate(axes):
+#         ax.plot(t, audio_segment, label="Original Waveform", alpha=0.7)
+        
+#         # Overlay block segments
+#         toggle = not toggle
+#         added_labels = set()  # Track which labels have been added
+        
+#         for i, middle_time in enumerate(blockTime):
+#             start, end = middle_time - window_size_in_second / 2, middle_time + window_size_in_second / 2
+#             if end < offset:
+#                 continue
+#             if start > offset + duration:
+#                 break
+            
+#             # Differentiate odd/even windows
+#             if (idx == 0 and i % 2 == 1) or (idx == 1 and i % 2 == 0):
+#                 continue
+            
+#             color = "y" if toggle else "r"
+#             label = "Odd Windows" if (idx == 0 and color not in added_labels) else ("Even Windows" if (idx == 1 and color not in added_labels) else "")
+            
+#             ax.axvspan(start, end, color=color, alpha=0.3, label=label)
+#             added_labels.add(color)
+        
+#         ax.set_ylabel("Amplitude")
+#         ax.set_title(f"{'Odd' if idx == 0 else 'Even'} Numbered Windows Overlap")
+#         ax.legend()
+
+#     plt.xlabel("Time (s)")
+#     plt.tight_layout()
+#     plt.show()
 
 def visualAudioBlock(blockTime, origAudio, window_size, fs):
-    duration = 0.5
-    offset = 1.0
-    window_size_in_second = window_size / fs
+    
+    # Settings for the visualization segment
+    duration = 0.1  # duration (in seconds) of the segment to visualize
+    offset = 1.0    # start time (in seconds) of the segment
+    n_frame = int(fs * duration)
     n_frame = int(fs * duration)
     t = np.linspace(offset, offset + duration, n_frame, endpoint=False)
     
-    # Extract the audio segment for plotting
-    audio_segment = origAudio[int(offset * fs):int(offset * fs + n_frame)]
+    # Extract a segment of the original audio for plotting
+    audio_segment = origAudio[int(offset * fs): int(offset * fs + n_frame)]
+    
+    # Create a Hann window (normalized shape)
+    hann_window = np.hanning(window_size)
+    window_duration = window_size / fs  # duration of the window in seconds
 
-    # Plot duplicated waveforms
-    fig, axes = plt.subplots(2, 1, figsize=(24, 8), sharex=True)
-    toggle = False
+    # Filter blockTime to only include blocks within the visualization segment
+    valid_blockTimes = [bt for bt in blockTime if (bt >= offset) and (bt <= offset + duration)]
+    
+    # Select up to three windows
+    selected_blockTimes = valid_blockTimes[:3]
+    
+    # Create 3 subplots (one per window)
+    fig, axes = plt.subplots(3, 1, figsize=(24, 12), sharex=True)
+    
     for idx, ax in enumerate(axes):
-        ax.plot(t, audio_segment, label="Original Waveform", alpha=0.7)
+        # Plot the original audio segment
+        ax.plot(t, audio_segment, label="Original Waveform", color="blue", alpha=0.7)
         
-        # Overlay block segments
-        toggle = not toggle
-        added_labels = set()  # Track which labels have been added
-        
-        for i, middle_time in enumerate(blockTime):
-            start, end = middle_time - window_size_in_second / 2, middle_time + window_size_in_second / 2
-            if end < offset:
-                continue
-            if start > offset + duration:
-                break
+        if idx < len(selected_blockTimes):
+            mid_time = selected_blockTimes[idx]
+            start_time = mid_time - window_duration / 2
+            end_time = mid_time + window_duration / 2
             
-            # Differentiate odd/even windows
-            if (idx == 0 and i % 2 == 1) or (idx == 1 and i % 2 == 0):
-                continue
+            # Create a time axis for the window and scale the Hann window for visualization
+            time_window = np.linspace(start_time, end_time, window_size)
+            # Scale the Hann window to the maximum absolute amplitude of the audio segment
+            scaled_hann = hann_window * np.max(np.abs(audio_segment))
             
-            color = "y" if toggle else "r"
-            label = "Odd Windows" if (idx == 0 and color not in added_labels) else ("Even Windows" if (idx == 1 and color not in added_labels) else "")
-            
-            ax.axvspan(start, end, color=color, alpha=0.3, label=label)
-            added_labels.add(color)
+            # Overlay the Hann window shape on the waveform
+            ax.plot(time_window, scaled_hann, color="red", linewidth=2, label="Hann Window")
+            ax.axvspan(start_time, end_time, color="red", alpha=0.3)
+            ax.set_title(f"Window {idx+1}: Centered at {mid_time:.2f} s")
+        else:
+            ax.set_title(f"Window {idx+1}: No Data")
         
         ax.set_ylabel("Amplitude")
-        ax.set_title(f"{'Odd' if idx == 0 else 'Even'} Numbered Windows Overlap")
         ax.legend()
-
+    
     plt.xlabel("Time (s)")
     plt.tight_layout()
     plt.show()
 
-
-def visualizeSTFT(stft, sr, hop_length=512):
+def visualizeSpec(stft, sr, hop_length=512, log_magnitude=True, ax=None):
     # Compute the magnitude in dB (add a small constant to avoid log(0))
-    magnitude_db = 20 * np.log10(np.abs(stft) + 1e-6)
-    
+    magnitude = np.abs(stft)
+    if log_magnitude:
+        magnitude_to_plot = 20 * np.log10(magnitude + 1e-6)
+        colorbar_label = 'Magnitude (dB)'
+        title = 'STFT Magnitude (dB)'
+    else:
+        magnitude_to_plot = magnitude
+        colorbar_label = 'Magnitude'
+        title = 'STFT Magnitude'
+        
     n_freq_bins, n_time_frames = stft.shape
     time_axis = np.arange(n_time_frames) * hop_length / sr
     freq_axis = np.linspace(0, sr/2, n_freq_bins)
-    
-    # Define the extent: [xmin, xmax, ymin, ymax]
     extent = [time_axis[0], time_axis[-1], freq_axis[0], freq_axis[-1]]
     
-    plt.figure(figsize=(10, 6))
-    plt.imshow(magnitude_db, aspect='auto', origin='lower', cmap='viridis', extent=extent)
-    plt.colorbar(label='Magnitude (dB)')
-    plt.xlabel('Time (s)')
-    plt.ylabel('Frequency (Hz)')
-    plt.title('STFT Magnitude (dB)')
-    plt.show()
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+    img = ax.imshow(magnitude_to_plot, aspect='auto', origin='lower', cmap='viridis', extent=extent)
+    plt.colorbar(img, ax=ax, label=colorbar_label)
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Frequency (Hz)')
+    ax.set_title(title)
+    return ax
 
 
 def visualizePitchTracking(gt_time, gt_freq, est_time=None, est_freq=None):
@@ -82,6 +142,71 @@ def visualizePitchTracking(gt_time, gt_freq, est_time=None, est_freq=None):
     plt.legend()
     plt.show()
 
+
+def visualizeMelSpectrogram(M, f_c, t, title='Mel Spectrogram', colormap='viridis', 
+                           figsize=(10, 6), min_dB=-60, vmin=None, vmax=None, 
+                           show_colorbar=True, min_freq=20):
+    
+  
+    
+    fig, ax = plt.subplots(figsize=figsize)
+    valid_freq_indices = np.where(f_c >= min_freq)[0]
+    if len(valid_freq_indices) == 0:
+        print(f"Warning: No frequencies above {min_freq}Hz found")
+        valid_freq_indices = np.arange(len(f_c))
+    
+    f_c_filtered = f_c[valid_freq_indices]
+    M_filtered = M[valid_freq_indices, :]
+    
+    if vmin is None:
+        if np.min(M_filtered) < 0:  # Data seems to be in dB
+            vmin = np.max(M_filtered) + min_dB
+        else:
+            vmin = np.min(M_filtered)
+    
+    if vmax is None:
+        vmax = np.max(M_filtered)
+
+    X, Y = np.meshgrid(t, f_c_filtered)
+    im = ax.pcolormesh(X, Y, M_filtered, 
+                      cmap=colormap,
+                      vmin=vmin, vmax=vmax,
+                      shading='auto')
+    
+    ax.set_yscale('log')
+    ax.set_ylim(f_c_filtered[0], f_c_filtered[-1])
+    ax.set_xlim(t[0], t[-1])
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Frequency (Hz)')
+    ax.set_title(title)
+    
+    # Add colorbar
+    if show_colorbar:
+        cbar = fig.colorbar(im, ax=ax)
+        if np.min(M_filtered) < 0:  # Data seems to be in dB
+            cbar.set_label('Magnitude (dB)')
+        else:
+            cbar.set_label('Magnitude')
+    if f_c_filtered[-1] > 1000:
+        yticks = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
+        yticks = [f for f in yticks if f >= f_c_filtered[0] and f <= f_c_filtered[-1]]
+        ax.set_yticks(yticks)
+
+        ytick_labels = []
+        for f in yticks:
+            if f >= 1000:
+                ytick_labels.append(f'{f/1000:.0f} kHz')
+            else:
+                ytick_labels.append(f'{f:.0f} Hz')
+        ax.set_yticklabels(ytick_labels)
+    else:
+        # For smaller frequency ranges, use more appropriate tick values
+        ax.yaxis.set_major_formatter(plt.FormatStrFormatter('%d Hz'))
+    ax.grid(which='minor', axis='y', linestyle=':', alpha=0.3)
+    ax.grid(which='major', axis='y', linestyle='-', alpha=0.3)
+    
+    plt.tight_layout()
+    return fig, ax, im
 
 import time
 from utils.eval import eval_pitchtrack
@@ -129,11 +254,9 @@ def visualizeMultiPitchAlgo(wav, sr, gt_qfreq,
             plot_gt[mask] = np.nan
             plot_est[mask] = np.nan
         
-        # Convert both to cents using the helper function.
         plot_gt_cents = hz_to_cents(plot_gt, ref=ref_freq)
         plot_est_cents = hz_to_cents(plot_est, ref=ref_freq)
-        
-        # Update global y-axis limits (ignoring nans)
+    
         current_min = np.nanmin(np.concatenate((plot_gt_cents, plot_est_cents)))
         current_max = np.nanmax(np.concatenate((plot_gt_cents, plot_est_cents)))
         global_min = min(global_min, current_min)
@@ -169,3 +292,5 @@ def visualizeMultiPitchAlgo(wav, sr, gt_qfreq,
     
     plt.tight_layout()
     plt.show()
+
+
