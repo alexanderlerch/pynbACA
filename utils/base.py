@@ -43,3 +43,33 @@ def sineWavGen(frequency=440, duration=2.0, sr=44100, iBlockLength=1024, iHopLen
     gt_qfreq = np.full(n_frames, frequency)
     
     return wav, sr, gt_qfreq
+
+
+
+def tickGen(bpm, duration_beats=8, sample_rate=44100, tick_duration=0.1, frequency=1000):
+
+    beat_duration = 60.0 / bpm
+    
+    if tick_duration > beat_duration:
+        raise ValueError("tick_duration cannot be greater than the beat duration (60/BPM).")
+    
+    # Number of samples for tick sound and silence
+    tick_samples = int(sample_rate * tick_duration)
+    silence_samples = int(sample_rate * (beat_duration - tick_duration))
+    
+    t = np.linspace(0, tick_duration, tick_samples, endpoint=False)
+    tick_wave = np.sin(2 * np.pi * frequency * t)
+    decay = np.linspace(1, 0, tick_samples)
+    tick_wave *= decay
+
+    silence_wave = np.zeros(silence_samples)
+    one_beat = np.concatenate([tick_wave, silence_wave])
+    
+    audio_signal = np.tile(one_beat, duration_beats)
+    
+    # Normalize the signal to the range of int16
+    if np.max(np.abs(audio_signal)) != 0:
+        audio_signal = audio_signal / np.max(np.abs(audio_signal))
+    audio_signal_int16 = np.int16(audio_signal * 32767)
+    
+    return sample_rate, audio_signal_int16
