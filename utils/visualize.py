@@ -294,3 +294,22 @@ def visualizeMultiPitchAlgo(wav, sr, gt_qfreq,
     plt.show()
 
 
+def visualizeNoveltyFunction(d, t, peaks, target=None):
+    
+    # Create visualizations
+    plt.figure(figsize=(20, 8))
+    plt.plot(t, d)
+    # put dots on the peaks
+    plt.scatter(t[peaks], d[peaks], color='r', label='Estimated Onsets')
+    if target is not None:
+        plt.vlines(target, 0, np.max(d), colors='g', linestyles='dashed', label='Target Onsets')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Novelty Function')
+    plt.title('Novelty Function (Flux) with Detected Peaks')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+
+if __name__ == '__main__':
+    pass
