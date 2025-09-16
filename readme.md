@@ -1,34 +1,32 @@
-# TODO List:
+## Repository Structure
 
-## ```lesson0.ipynb```
-### 0.Pre-require
-- [x] Make sure the audio file is ready
-- [x] I think it would be better to use the pyACA wavread function
-- [ ] Clear the specific warnings.
+The repository is organized into two main parts:
 
+- **`utils/`**  
+  A collection of reusable utility functions that support the notebooks.
 
-### 1. Audio preproc
+- **`Notebooks/`**  
+  Contains Jupyter notebooks for different topics.  
+  Each notebook is named using the convention: `\<number\>-\<topic\>.ipynb`
+  For example:
+  - `01_DSP_Fundamental_Concepts.ipynb`
+  - `02_NoveltyOnset.ipynb`
 
-#### 1.1
-- [x] Add downmixing step
-- [ ] Bad audio example, would find a steroe file. (Take the audio in the repo/book)
-#### 1.2
-- [x] Add normalization step
+### Audio Asset Directory Structure
 
-### 1. Block audio
-- [x] Fixed the block audio visualization
+Since currently the audio asset repository is not created yet,I just put the Audio_Asset directory in this branch. In future, it will be moved to a independent repository and linked to this repo.
 
-### 2. Spectrogram
-#### 2.2 FFT
-- [ ] While I like this, I wonder if it is maybe too detailed for the main audience. Ultimately, nobody will implement an FFT... (Maybe we can discuss this in the next meeing)
-- [ ] Equ needed
-#### 2.3 STFT 
-- [x] Plot a spectrogram also with log magnitude
-- [x] Plot a Mel spectrogram, too
-- [ ] explain a little bit: spectrogram content, notice for the audience that is new for FFT/FT
+Audio assets are organized by the notebook they belong to, so that each notebook has its own dedicated subdirectory.  
+The naming convention is: Audio_Asset/`<number>-<notebook_name>/<number>-<audio_file_name>.wav`
+For example: - `Audio_Asset/01-DSP_Fundamental_Concepts/01-D_AMairena.wav`
 
-## ```dataset.py```
-- [ ] license issue for download scripts: https://www.upf.edu/web/mtg/tonas
-- [ ] AL: it might be easiest to just use the files that I am always using from the slides: https://github.com/alexanderlerch/ACA-Slides/tree/2nd_edition/audio, particularly sax_example.mp3 
+## `01_DSP_Fundamental_Concepts.ipynb`
 
-## ``appendix notebook for some detailed implementation (e.g. FFT algo)``
+### Update
+
+- [x] Add the dependency installation part in environment setup, remove the outdated/unused dependency
+- [x] Add a brief introduction section before the Section 0
+- [x] Renamed variable wav as wav_audio to reduce potential conflict with the imported library "scipy.io.wav as wav"
+- [x] Added the missing equation of DFT, FFT, STFT
+- [x] Modified audio file path structure
+- [x] Clear the specific warnings.
