@@ -10,7 +10,7 @@ The repository is organized into two main parts:
   Each notebook is named using the convention: `\<number\>-\<topic\>.ipynb`
   For example:
   - `01_DSP_Fundamental_Concepts.ipynb`
-  - `02_NoveltyOnset.ipynb`
+  - `02_Novelty_Onset.ipynb`
 
 ### Audio Asset Directory Structure
 
@@ -20,13 +20,7 @@ Audio assets are organized by the notebook they belong to, so that each notebook
 The naming convention is: Audio_Asset/`<number>-<notebook_name>/<number>-<audio_file_name>.wav`
 For example: - `Audio_Asset/01-DSP_Fundamental_Concepts/01-D_AMairena.wav`
 
-## `01_DSP_Fundamental_Concepts.ipynb`
+## Update
 
-### Update
-
-- [x] Add the dependency installation part in environment setup, remove the outdated/unused dependency
-- [x] Add a brief introduction section before the Section 0
-- [x] Renamed variable wav as wav_audio to reduce potential conflict with the imported library "scipy.io.wav as wav"
-- [x] Added the missing equation of DFT, FFT, STFT
-- [x] Modified audio file path structure
-- [x] Clear the specific warnings.
+- [x] Modified Novelty Onset notebook, changed the input audio for onset detection, add some more explanation and add the unfinished deviation calculation.
+- [x] Clear the "Requirement already satisfied" cell output to make sure notebook looks clear.
