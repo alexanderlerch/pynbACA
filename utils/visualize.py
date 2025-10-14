@@ -101,8 +101,9 @@ def visualAudioBlock(blockTime, origAudio, window_size, fs):
     plt.tight_layout()
     plt.show()
 
-def visualizeSpec(stft, sr, hop_length=512, log_magnitude=True, ax=None):
-    # Compute the magnitude in dB (add a small constant to avoid log(0))
+def visualizeSpec(stft, sr, hop_length=512, log_magnitude=True, ax=None,
+                  fig_width=10, fig_height=6):
+
     magnitude = np.abs(stft)
     if log_magnitude:
         magnitude_to_plot = 20 * np.log10(magnitude + 1e-6)
@@ -119,9 +120,10 @@ def visualizeSpec(stft, sr, hop_length=512, log_magnitude=True, ax=None):
     extent = [time_axis[0], time_axis[-1], freq_axis[0], freq_axis[-1]]
     
     if ax is None:
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig, ax = plt.subplots(figsize=(fig_width, fig_height))
         
-    img = ax.imshow(magnitude_to_plot, aspect='auto', origin='lower', cmap='viridis', extent=extent)
+    img = ax.imshow(magnitude_to_plot, aspect='auto', origin='lower',
+                    cmap='viridis', extent=extent)
     plt.colorbar(img, ax=ax, label=colorbar_label)
     ax.set_xlabel('Time (s)')
     ax.set_ylabel('Frequency (Hz)')
