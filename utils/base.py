@@ -1,6 +1,7 @@
 import timeit
 import numpy as np
-
+from scipy.signal import sawtooth
+from pyACA import ToolFreq2Midi
 #TODO: use consistent function names, pyACA style would be compareRuntime, generateSinWave
 def compare_runtime(func1, func2, input_sequence, num_runs=10):
     """
@@ -44,7 +45,93 @@ def sineWavGen(frequency=440, duration=2.0, sr=44100, iBlockLength=1024, iHopLen
     
     return wav, sr, gt_qfreq
 
+def sawtoothWavGen(frequency=440, duration=2.0, sr=44100, iBlockLength=1024, iHopLength=512):
+    n_samples = int(sr * duration)
+    t = np.linspace(0, duration, n_samples, endpoint=False)
+    wav = sawtooth(2 * np.pi * frequency * t)
+    n_frames = int(np.floor(n_samples / iHopLength)) + 1
+    gt_qfreq = np.full(n_frames, frequency)
+    return wav, sr, gt_qfreq
 
+def gen_chromatic_scale(start_midi=69, n_semitones=12, seconds_per_note=1.0,
+                         sr=44100, iBlockLength=4096, iHopLength=512):
+    """
+    Build a chromatic scale by concatenating single-note sines.
+    Returns: wav_all, sr, gt_qfreq_all, gt_midi_all
+    """
+    wavs = []
+    
+    for k in range(n_semitones):
+        midi = start_midi + k
+        f0 = 440.0 * (2.0 ** ((midi - 69.0)/12.0))
+        w, sr_out, gt_f = sineWavGen(f0, seconds_per_note, sr=sr,
+                                     iBlockLength=iBlockLength, iHopLength=iHopLength)
+        if sr_out != sr:
+            raise ValueError("Sample-rate mismatch in generator.")
+        wavs.append(w)
+    
+    wav_all = np.concatenate(wavs, axis=0)
+    
+    # Let pyACA determine the frame count by running a dummy pitch estimation
+    import pyACA
+    dummy_pitch, dummy_time = pyACA.computePitch('TimeAcf', wav_all, sr, 
+                                                   iBlockLength=iBlockLength, 
+                                                   iHopLength=iHopLength)
+    n_frames_total = len(dummy_pitch)
+    
+    # Now build ground truth with the correct frame count
+    samples_per_note = int(seconds_per_note * sr)
+    gt_qfreq_all = np.zeros(n_frames_total)
+    
+    for i in range(n_frames_total):
+        center_sample = i * iHopLength + iBlockLength // 2
+        note_idx = min(center_sample // samples_per_note, n_semitones - 1)
+        midi = start_midi + note_idx
+        gt_qfreq_all[i] = 440.0 * (2.0 ** ((midi - 69.0)/12.0))
+    
+    gt_midi_all = ToolFreq2Midi(gt_qfreq_all)
+    
+    return wav_all, sr, gt_qfreq_all, gt_midi_all
+
+def gen_chromatic_scale_saw(start_midi=69, n_semitones=12, seconds_per_note=1.0,
+                         sr=44100, iBlockLength=4096, iHopLength=512):
+    """
+    Build a chromatic scale by concatenating single-note sines.
+    Returns: wav_all, sr, gt_qfreq_all, gt_midi_all
+    """
+    wavs = []
+    
+    for k in range(n_semitones):
+        midi = start_midi + k
+        f0 = 440.0 * (2.0 ** ((midi - 69.0)/12.0))
+        w, sr_out, gt_f = sawtoothWavGen(f0, seconds_per_note, sr=sr,
+                                     iBlockLength=iBlockLength, iHopLength=iHopLength)
+        if sr_out != sr:
+            raise ValueError("Sample-rate mismatch in generator.")
+        wavs.append(w)
+    
+    wav_all = np.concatenate(wavs, axis=0)
+    
+    # Let pyACA determine the frame count by running a dummy pitch estimation
+    import pyACA
+    dummy_pitch, dummy_time = pyACA.computePitch('TimeAcf', wav_all, sr, 
+                                                   iBlockLength=iBlockLength, 
+                                                   iHopLength=iHopLength)
+    n_frames_total = len(dummy_pitch)
+    
+    # Now build ground truth with the correct frame count
+    samples_per_note = int(seconds_per_note * sr)
+    gt_qfreq_all = np.zeros(n_frames_total)
+    
+    for i in range(n_frames_total):
+        center_sample = i * iHopLength + iBlockLength // 2
+        note_idx = min(center_sample // samples_per_note, n_semitones - 1)
+        midi = start_midi + note_idx
+        gt_qfreq_all[i] = 440.0 * (2.0 ** ((midi - 69.0)/12.0))
+    
+    gt_midi_all = ToolFreq2Midi(gt_qfreq_all)
+    
+    return wav_all, sr, gt_qfreq_all, gt_midi_all
 
 def tickGen(bpm, duration_beats=8, sample_rate=44100, tick_duration=0.1, frequency=1000):
 

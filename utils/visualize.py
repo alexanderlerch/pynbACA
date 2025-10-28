@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pyACA
 import matplotlib.animation as animation
-
+import pretty_midi
 # def visualAudioBlock(blockTime, origAudio, window_size, fs):
 #     duration = 0.5
 #     offset = 1.0
@@ -131,17 +131,77 @@ def visualizeSpec(stft, sr, hop_length=512, log_magnitude=True, ax=None,
     return ax
 
 
-def visualizePitchTracking(gt_time, gt_freq, est_time=None, est_freq=None):
+def visualizePitchTracking(gt_time, gt_midi, est_time=None, est_midi=None):
 
     plt.figure(figsize=(10, 6))
-    plt.plot(gt_time, gt_freq, linestyle='-', color='b', label='Ground Truth')
-    if est_freq is not None and est_time is not None:
-        plt.plot(est_time, est_freq, linestyle='--', color='r', label='Estimated')
+    plt.plot(gt_time, gt_midi, linestyle='-', color='b', label='Ground Truth')
+    if est_midi is not None and est_time is not None:
+        plt.plot(est_time, est_midi, linestyle='--', color='r', label='Estimated')
     plt.xlabel('Time (s)')
-    plt.ylabel('Frequency (Hz)')
+    plt.ylabel('Midi note')
     plt.title('Pitch Tracking Visualization')
     plt.grid(True)
     plt.legend()
+    plt.show()
+
+
+def visualize_tracking_freq(est_freq, gd_freq, freq_rms):
+    """
+    Plot Estimated vs Ground-Truth frequency in Hz (vs frame index).
+    Unvoiced (<=0) are hidden. Title shows RMS (Hz).
+    """
+    est = np.asarray(est_freq, dtype=float)
+    gt  = np.asarray(gd_freq,   dtype=float)
+    L = min(len(est), len(gt))
+    est, gt = est[:L], gt[:L]
+
+    # Hide unvoiced
+    mask = (est <= 0) | (gt <= 0) | ~np.isfinite(est) | ~np.isfinite(gt)
+    est_plot = est.copy()
+    gt_plot  = gt.copy()
+    est_plot[mask] = np.nan
+    gt_plot[mask]  = np.nan
+
+    x = np.arange(L)
+    plt.figure(figsize=(8, 4))
+    plt.plot(x, gt_plot,  '-',  label='Ground Truth (Hz)')
+    plt.plot(x, est_plot, '--', label='Estimated (Hz)')
+    plt.xlabel('Frame')
+    plt.ylabel('Frequency (Hz)')
+    plt.title(f'Pitch Tracking (Hz) — RMS: {freq_rms:.2f} Hz')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+
+def visualize_tracking_midi(est_midi, gt_midi, midi_rms):
+    """
+    Plot Estimated vs Ground-Truth MIDI (vs frame index).
+    Unvoiced (NaN) are hidden. Title shows RMS (MIDI).
+    """
+    est = np.asarray(est_midi, dtype=float)
+    gt  = np.asarray(gt_midi,  dtype=float)
+    L = min(len(est), len(gt))
+    est, gt = est[:L], gt[:L]
+
+    # Hide invalids (NaN/inf)
+    mask = ~np.isfinite(est) | ~np.isfinite(gt)
+    est_plot = est.copy()
+    gt_plot  = gt.copy()
+    est_plot[mask] = np.nan
+    gt_plot[mask]  = np.nan
+
+    x = np.arange(L)
+    plt.figure(figsize=(8, 4))
+    plt.plot(x, gt_plot,  '-',  label='Ground Truth (MIDI)')
+    plt.plot(x, est_plot, '--', label='Estimated (MIDI)')
+    plt.xlabel('Frame')
+    plt.ylabel('MIDI Note Number')
+    plt.title(f'Pitch Tracking (MIDI) — RMS: {midi_rms:.3f} MIDI')
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
     plt.show()
 
 
@@ -210,91 +270,6 @@ def visualizeMelSpectrogram(M, f_c, t, title='Mel Spectrogram', colormap='viridi
     plt.tight_layout()
     return fig, ax, im
 
-import time
-from utils.eval import eval_pitchtrack
-
-def hz_to_cents(freq, ref=1.0):
-    freq = np.asarray(freq)
-    # Where freq > 0, compute cents; otherwise, return NaN.
-    cents = np.where(freq > 0, 1200 * np.log2(freq / ref), np.nan)
-    return cents
-
-def visualizeMultiPitchAlgo(wav, sr, gt_qfreq, 
-                            algorithms=None,
-                            iBlockLength=1024, iHopLength=512,
-                            ref_freq=1.0):
-  
-    if algorithms is None:
-        algorithms = ['SpectralAcf', 'SpectralHps', 'TimeAcf', 
-                      'TimeAmdf', 'TimeAuditory', 'TimeZeroCrossings']
-    
-    results = []  # Will hold results for each algorithm
-    global_min = float('inf')
-    global_max = float('-inf')
-    
-    # Convert ground truth to numpy array (in Hz) and then to cents
-    gt_qfreq = np.asarray(gt_qfreq)
-    gt_cents = hz_to_cents(gt_qfreq, ref=ref_freq)
-    
-    for algo in algorithms:
-        # Compute pitch and measure runtime
-        start_time = time.time()
-        est_freq, est_time = pyACA.computePitch(algo, wav, sr, 
-                                                iBlockLength=iBlockLength, 
-                                                iHopLength=iHopLength)
-        runtime = time.time() - start_time
-        
-        # Compute RMS error in cents (only considers frames where both are nonzero)
-        rms_error = eval_pitchtrack(estimate_in_hz=est_freq, 
-                                    groundtruth_in_hz=gt_qfreq, 
-                                    mode='pitch')
-        
-        plot_gt = np.copy(gt_qfreq)
-        plot_est = np.copy(est_freq)
-        mask = (gt_qfreq == 0) | (est_freq == 0)
-        if mask.any():
-            plot_gt[mask] = np.nan
-            plot_est[mask] = np.nan
-        
-        plot_gt_cents = hz_to_cents(plot_gt, ref=ref_freq)
-        plot_est_cents = hz_to_cents(plot_est, ref=ref_freq)
-    
-        current_min = np.nanmin(np.concatenate((plot_gt_cents, plot_est_cents)))
-        current_max = np.nanmax(np.concatenate((plot_gt_cents, plot_est_cents)))
-        global_min = min(global_min, current_min)
-        global_max = max(global_max, current_max)
-        
-        results.append({
-            'algo': algo,
-            'runtime': runtime,
-            'est_time': est_time,
-            'plot_est_cents': plot_est_cents,
-            'plot_gt_cents': plot_gt_cents,
-            'rms_error': rms_error
-        })
-    
-    if global_min == global_max:
-        global_min -= 100
-        global_max += 100
-    
-    nrows = 2
-    ncols = 3
-    plt.figure(figsize=(18, 10))
-    
-    for idx, res in enumerate(results):
-        ax = plt.subplot(nrows, ncols, idx + 1)
-        ax.plot(res['est_time'], res['plot_est_cents'], label='Estimated', color='b')
-        ax.plot(res['est_time'], res['plot_gt_cents'], label='Ground Truth', color='r', linestyle='--')
-        ax.set_xlabel('Time (s)')
-        ax.set_ylabel('Pitch (cents)')
-        ax.set_ylim(global_min, global_max)
-        ax.set_title(f"{res['algo']}\nRMS Error: {res['rms_error']:.2f} cents, Run time: {res['runtime']:.3f} s")
-        ax.legend()
-        ax.grid(True)
-    
-    plt.tight_layout()
-    plt.show()
-
 
 def visualizeNoveltyFunction(d, t, peaks, target=None):
     
@@ -312,6 +287,70 @@ def visualizeNoveltyFunction(d, t, peaks, target=None):
     plt.grid(True)
     plt.show()
 
+# draw out the spectrogram of audio with fundamental frequency
+def visualizeRefSpec(stft, sr, hop_length=512, log_magnitude=True, ax=None, ref_f = None,fig_width=10, fig_height=6):
+    magnitude = np.abs(stft)
+    if log_magnitude:
+        magnitude_to_plot = 20 * np.log10(magnitude + 1e-6)
+        colorbar_label = 'Magnitude (dB)'
+        title = 'STFT Magnitude (dB)'
+    else:
+        magnitude_to_plot = magnitude
+        colorbar_label = 'Magnitude'
+        title = 'STFT Magnitude'
+
+    n_freq_bins, n_time_frames = stft.shape
+    time_axis = np.arange(n_time_frames) * hop_length / sr
+    freq_axis = np.linspace(0, sr/2, n_freq_bins)
+    extent = [time_axis[0], time_axis[-1], freq_axis[0], freq_axis[-1]]
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+
+    img = ax.imshow(magnitude_to_plot, aspect='auto', origin='lower',
+                    cmap='viridis', extent=extent)
+    plt.colorbar(img, ax=ax, label=colorbar_label)
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Frequency (Hz)')
+    ax.set_title(title)
+    if ref_f is not None:
+      ax.axhline(y=ref_f, color="red", linestyle="--", linewidth=1.2)
+      ax.text(time_axis[-1], ref_f, f' {ref_f:.2f} Hz', color="red", va='bottom', ha='left', fontsize=9)
+    return ax
+
+def midi_note_mask(pm, frame_times):
+    """
+    Return a boolean mask of len(frame_times), 
+    True means MIDI note is active at that time.
+    """
+    ft = np.asarray(frame_times, dtype=float)
+    mask = np.zeros_like(ft, dtype=bool)
+    for inst in pm.instruments:
+        for n in inst.notes:
+            mask |= (ft >= n.start) & (ft < n.end)
+    return mask
+
+
+def apply_mask_to_tracks(est_freq, gt_freq, mask):
+    est = np.asarray(est_freq, dtype=float).copy()
+    gt  = np.asarray(gt_freq,  dtype=float).copy()
+    # Hide frames outside notes OR where gt has no pitch (0)
+    keep = mask & (gt > 0)
+    est[~keep] = np.nan
+    gt[~keep]  = np.nan
+    return est, gt, keep
+
+def midi_to_array(midi_obj):
+    """Convert PrettyMIDI object → arrays of note (pitch, start, end)."""
+    pitches = []
+    starts = []
+    ends = []
+    for inst in midi_obj.instruments:
+        for n in inst.notes:
+            pitches.append(n.pitch)
+            starts.append(n.start)
+            ends.append(n.end)
+    return np.array(pitches), np.array(starts), np.array(ends)
 
 if __name__ == '__main__':
     pass

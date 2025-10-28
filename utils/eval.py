@@ -2,32 +2,32 @@ import numpy as np
 from pyACA import ToolFreq2Midi
 
 #TODO function and variable naming as mentioned in the other comments
-def eval_pitchtrack(estimate_in_hz, groundtruth_in_hz, mode='pitch'):
+def eval_pitchtrack(estimate, groundtruth, mode='pitch'):
    
-    estimate = np.asarray(estimate_in_hz)
-    gt = np.asarray(groundtruth_in_hz)
-    
-    # Create a mask for valid frames where ground truth frequency is not zero.
-    valid_mask = gt != 0
-    if np.sum(valid_mask) == 0:
-        raise ValueError("No valid frames with nonzero ground truth frequency.")
-    
-    # Select only the valid entries
-    estimate_valid = estimate[valid_mask]
-    gt_valid = gt[valid_mask]
-    
-    # Compute the error in cents for each valid frame.
-    # The formula for cents is: 1200 * log2(estimate / groundtruth)
+    estimate = np.asarray(estimate)
+    gt = np.asarray(groundtruth)
+  
     if mode == 'pitch':
-        estimate_valid = ToolFreq2Midi(estimate_valid)
-        gt_valid = ToolFreq2Midi(gt_valid)
-    error_cents = 1200 * np.log2(estimate_valid / gt_valid)
-    
+        error = estimate - gt
+
+    if mode == 'freq':
+        # Direct difference in Hz
+        error = estimate - gt
+        
     # Compute the RMS error (root mean square error)
-    rms_error = np.sqrt(np.mean(np.square(error_cents)))
+    rms_error = np.sqrt(np.mean(np.square(error)))
     
     return rms_error
-    
+
+def eval_pitchtrack_midi(estimate, groundtruth):
+  est = np.asarray(estimate, dtype=float).squeeze()
+  gt  = np.asarray(groundtruth, dtype=float).squeeze()
+  valid = np.isfinite(est) & np.isfinite(gt)
+  valid &= (gt != 0)
+  error = est[valid] - gt[valid]
+  rms_error = np.sqrt(np.mean(np.square(error)))
+  return rms_error
+
 def computeTemporalFmeasure(est_onsets, ref_onsets, tolerance=0.05):
     """Compute F-measure between estimated and reference onsets
     
