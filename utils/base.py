@@ -35,7 +35,7 @@ def compare_runtime(func1, func2, input_sequence, num_runs=10):
 #TODO: be sure to use consistent parameter names (see frequency vs. sr), also preferably add unit, e.g., freqInHz, durationInS, etc.
 def sineWavGen(frequency=440, duration=2.0, sr=44100, iBlockLength=1024, iHopLength=512):
     # Create time vector for the entire signal
-    t = np.linspace(0, duration, int(sr * duration), endpoint=False)
+    t = np.linspace(0, duration, int(round(sr * duration)), endpoint=False)
     wav = np.sin(2 * np.pi * frequency * t)
     
     # Compute the number of blocks (frames) that will be used in pitch analysis.

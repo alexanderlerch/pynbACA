@@ -19,14 +19,15 @@ def eval_pitchtrack(estimate, groundtruth, mode='pitch'):
     
     return rms_error
 
+# return cents error
 def eval_pitchtrack_midi(estimate, groundtruth):
   est = np.asarray(estimate, dtype=float).squeeze()
   gt  = np.asarray(groundtruth, dtype=float).squeeze()
   valid = np.isfinite(est) & np.isfinite(gt)
   valid &= (gt != 0)
-  error = est[valid] - gt[valid]
-  rms_error = np.sqrt(np.mean(np.square(error)))
-  return rms_error
+  error_cent = 100 * (est[valid] - gt[valid])
+  rms_error_cent = np.sqrt(np.mean(np.square(error_cent)))
+  return rms_error_cent
 
 def computeTemporalFmeasure(est_onsets, ref_onsets, tolerance=0.05):
     """Compute F-measure between estimated and reference onsets

@@ -130,7 +130,7 @@ def visualizeSpec(stft, sr, hop_length=512, log_magnitude=True, ax=None,
     ax.set_title(title)
     return ax
 
-
+'''
 def visualizePitchTracking(gt_time, gt_midi, est_time=None, est_midi=None):
 
     plt.figure(figsize=(10, 6))
@@ -143,7 +143,36 @@ def visualizePitchTracking(gt_time, gt_midi, est_time=None, est_midi=None):
     plt.grid(True)
     plt.legend()
     plt.show()
+'''
 
+def visualizePitchTracking(gt_time, gt_midi, est_time=None, est_midi=None):
+    gt_time = np.asarray(gt_time)
+    gt_midi = np.asarray(gt_midi)
+
+    plt.figure(figsize=(10, 6))
+
+    # plot Ground Truth with horizontal lines only (skip zeros) 
+    # find boundaries where the MIDI value changes
+    boundaries = np.where(np.diff(gt_midi) != 0)[0] + 1
+    starts = np.concatenate(([0], boundaries))
+    ends   = np.concatenate((boundaries, [len(gt_midi)]))
+
+    first_label_used = False
+    for s, e in zip(starts, ends):
+        val = gt_midi[s]
+        if val > 0:  # draw only active notes
+            plt.hlines(y=val,xmin=gt_time[s],xmax=gt_time[e-1],color='b',linewidth=2,label='Ground Truth' if not first_label_used else None)
+            first_label_used = True
+
+    if est_midi is not None and est_time is not None:
+        plt.plot(est_time, est_midi, linestyle='--', color='r', label='Estimated')
+
+    plt.xlabel('Time (s)')
+    plt.ylabel('Midi note')
+    plt.title('Pitch Tracking Visualization')
+    plt.grid(True)
+    plt.legend()
+    plt.show()
 
 def visualize_tracking_freq(est_freq, gd_freq, freq_rms):
     """
@@ -178,7 +207,7 @@ def visualize_tracking_freq(est_freq, gd_freq, freq_rms):
 def visualize_tracking_midi(est_midi, gt_midi, midi_rms):
     """
     Plot Estimated vs Ground-Truth MIDI (vs frame index).
-    Unvoiced (NaN) are hidden. Title shows RMS (MIDI).
+    Unvoiced (NaN) are hidden. Title shows RMS (cents).
     """
     est = np.asarray(est_midi, dtype=float)
     gt  = np.asarray(gt_midi,  dtype=float)
@@ -198,7 +227,7 @@ def visualize_tracking_midi(est_midi, gt_midi, midi_rms):
     plt.plot(x, est_plot, '--', label='Estimated (MIDI)')
     plt.xlabel('Frame')
     plt.ylabel('MIDI Note Number')
-    plt.title(f'Pitch Tracking (MIDI) — RMS: {midi_rms:.3f} MIDI')
+    plt.title(f'Pitch Tracking (MIDI) — RMS: {midi_rms:.3f} cents')
     plt.grid(True, alpha=0.3)
     plt.legend()
     plt.tight_layout()
