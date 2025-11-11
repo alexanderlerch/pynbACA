@@ -145,7 +145,7 @@ def visualizePitchTracking(gt_time, gt_midi, est_time=None, est_midi=None):
     plt.show()
 '''
 
-def visualizePitchTracking(gt_time, gt_midi, est_time=None, est_midi=None):
+def visualizePitchTracking(gt_time, gt_midi, est_time=None, est_midi=None, algorithm_name=''):
     gt_time = np.asarray(gt_time)
     gt_midi = np.asarray(gt_midi)
 
@@ -169,12 +169,12 @@ def visualizePitchTracking(gt_time, gt_midi, est_time=None, est_midi=None):
 
     plt.xlabel('Time (s)')
     plt.ylabel('Midi note')
-    plt.title('Pitch Tracking Visualization')
+    plt.title(f'Pitch Tracking Visualization - {algorithm_name}')
     plt.grid(True)
     plt.legend()
     plt.show()
 
-def visualize_tracking_freq(est_freq, gd_freq, freq_rms):
+def visualize_tracking_freq(est_freq, gd_freq, freq_rms, title):
     """
     Plot Estimated vs Ground-Truth frequency in Hz (vs frame index).
     Unvoiced (<=0) are hidden. Title shows RMS (Hz).
@@ -197,14 +197,14 @@ def visualize_tracking_freq(est_freq, gd_freq, freq_rms):
     plt.plot(x, est_plot, '--', label='Estimated (Hz)')
     plt.xlabel('Frame')
     plt.ylabel('Frequency (Hz)')
-    plt.title(f'Pitch Tracking (Hz) — RMS: {freq_rms:.2f} Hz')
+    plt.title(f"{title} — RMS Error: {freq_rms:.2f} Hz")
     plt.grid(True, alpha=0.3)
     plt.legend()
     plt.tight_layout()
     plt.show()
 
 
-def visualize_tracking_midi(est_midi, gt_midi, midi_rms):
+def visualize_tracking_midi(est_midi, gt_midi, midi_rms, title):
     """
     Plot Estimated vs Ground-Truth MIDI (vs frame index).
     Unvoiced (NaN) are hidden. Title shows RMS (cents).
@@ -227,7 +227,7 @@ def visualize_tracking_midi(est_midi, gt_midi, midi_rms):
     plt.plot(x, est_plot, '--', label='Estimated (MIDI)')
     plt.xlabel('Frame')
     plt.ylabel('MIDI Note Number')
-    plt.title(f'Pitch Tracking (MIDI) — RMS: {midi_rms:.3f} cents')
+    plt.title(f"{title} — RMS Error: {midi_rms:.2f} cents")
     plt.grid(True, alpha=0.3)
     plt.legend()
     plt.tight_layout()
@@ -300,6 +300,22 @@ def visualizeMelSpectrogram(M, f_c, t, title='Mel Spectrogram', colormap='viridi
     return fig, ax, im
 
 
+def visualize_chromagram(chroma, title="Chromagram"):
+    plt.figure(figsize=(10, 6))
+    plt.imshow(chroma, aspect='auto', origin='lower', interpolation='nearest')
+    plt.colorbar(label="Normalized Energy")
+
+    plt.yticks(
+        ticks=np.arange(12),
+        labels=["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"]
+    )
+    plt.xlabel("Time Frame")
+    plt.ylabel("Pitch Class")
+    plt.title(title)
+    plt.tight_layout()
+    plt.show()
+    
+    
 def visualizeNoveltyFunction(d, t, peaks, target=None):
     
     # Create visualizations
@@ -381,5 +397,8 @@ def midi_to_array(midi_obj):
             ends.append(n.end)
     return np.array(pitches), np.array(starts), np.array(ends)
 
+    
 if __name__ == '__main__':
     pass
+
+

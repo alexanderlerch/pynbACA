@@ -11,6 +11,8 @@ The repository is organized into two main parts:
   For example:
   - `01_DSP_Fundamental_Concepts.ipynb`
   - `02_Novelty_Onset.ipynb`
+  - `03_PitchContour.ipynb`
+  - `04_Key_Detection.ipynb`
 
 ### Audio Asset Directory Structure
 
@@ -22,5 +24,4 @@ For example: - `Audio_Asset/01-DSP_Fundamental_Concepts/01-D_AMairena.wav`
 
 ## Update
 
-- [x] Modified Novelty Onset notebook, changed the input audio for onset detection, add some more explanation and add the unfinished deviation calculation.
-- [x] Clear the "Requirement already satisfied" cell output to make sure notebook looks clear.
+- [x] Implemented the notebook for Key detection. However, there are problem that I am using gtzan dataset and current detected key is very different from the labeling.

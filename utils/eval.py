@@ -74,3 +74,70 @@ def computeTemporalFmeasure(est_onsets, ref_onsets, tolerance=0.05):
         f_measure = 2 * precision * recall / (precision + recall)
         
     return f_measure, precision, recall
+
+
+# Ordered pitch classes for mapping semitones
+PITCH_CLASSES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+def key_relation_score(pred_key, true_key):
+    tonic_pred, mode_pred = pred_key.split()
+    tonic_true, mode_true = true_key.split()
+
+    idx_pred = PITCH_CLASSES.index(tonic_pred)
+    idx_true = PITCH_CLASSES.index(tonic_true)
+    diff = (idx_pred - idx_true) % 12
+
+    # Exact match
+    if pred_key == true_key:
+        return 1.0
+    # Perfect fifth relation (±7 semitones)
+    elif diff in [5, 7] and mode_pred == mode_true:
+        return 0.5
+    # Relative major/minor
+    elif (mode_pred == "minor" and mode_true == "major" and diff == 9) or (mode_pred == "major" and mode_true == "minor" and diff == 3):
+        return 0.3
+    # Parallel major/minor
+    elif tonic_pred == tonic_true and mode_pred != mode_true:
+        return 0.2
+    # Otherwise unrelated
+    return 0.0
+
+def evaluate_key_detection(pred_keys, true_keys):
+    N = len(true_keys)
+
+    tonic_correct = 0
+    mode_correct = 0
+    mirex_total = 0.0
+
+    for pred, true in zip(pred_keys, true_keys):
+        tonic_pred, mode_pred = pred.split()
+        tonic_true, mode_true = true.split()
+        # Tonic accuracy
+        if tonic_pred == tonic_true:
+            tonic_correct += 1
+        # Mode accuracy
+        if mode_pred == mode_true:
+            mode_correct += 1
+        # Weighted score (MIREX)
+        mirex_total += key_relation_score(pred, true)
+
+    tonic_acc = tonic_correct / N
+    mode_acc = mode_correct / N
+    mirex_score = mirex_total / N
+
+    return {
+        "tonic_acc": tonic_acc,
+        "mode_acc": mode_acc,
+        "mirex_score": mirex_score
+    }
+    
+def normalize_key_label(key_str):
+    if not key_str:
+        return None
+    parts = key_str.strip().split()
+    if len(parts) < 2:
+        return key_str
+    tonic, mode = parts[0], parts[1]
+    tonic = tonic[0].upper() + tonic[1:] if len(tonic) > 1 else tonic.upper()
+    mode = "major" if mode.lower() in ["maj", "major"] else "minor"
+    return f"{tonic} {mode}"
