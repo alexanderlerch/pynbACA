@@ -1,6 +1,6 @@
 .DS_Store
 */.DS_Store
-.aca
+aca/
 __pycache__/
 dataset-gtzan/
 dataset-gtzan-key/
