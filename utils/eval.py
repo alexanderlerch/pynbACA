@@ -9,14 +9,13 @@ def eval_pitchtrack(estimate, groundtruth, mode='pitch'):
   
     if mode == 'pitch':
         error = estimate - gt
+        rms_error = np.sqrt(np.mean(np.square(error))) * 100
 
     if mode == 'freq':
         # Direct difference in Hz
         error = estimate - gt
-        
-    # Compute the RMS error (root mean square error)
-    rms_error = np.sqrt(np.mean(np.square(error)))
-    
+        rms_error = np.sqrt(np.mean(np.square(error)))
+            
     return rms_error
 
 # return cents error
@@ -28,6 +27,41 @@ def eval_pitchtrack_midi(estimate, groundtruth):
   error_cent = 100 * (est[valid] - gt[valid])
   rms_error_cent = np.sqrt(np.mean(np.square(error_cent)))
   return rms_error_cent
+
+def eval_midi_est_accuracy(estimate, groundtruth):
+    est = np.asarray(estimate, dtype=float).squeeze()
+    gt  = np.asarray(groundtruth, dtype=float).squeeze()
+
+    # Valid frames: finite and non-zero ground truth
+    valid = np.isfinite(est) & np.isfinite(gt)
+    valid &= (gt != 0)
+
+    if not np.any(valid):
+        return np.nan, np.nan
+
+    # Round estimate to nearest integer MIDI
+    est_rounded = np.rint(est).astype(float)
+
+    # Differences in semitones on valid frames
+    diff_semitones = est_rounded[valid] - gt[valid]
+
+    # Accuracy with octave errors counted 
+    # Correct if rounded estimate equals ground truth
+    correct_all = (est_rounded[valid] == gt[valid])
+    acc_with_octave = np.sum(correct_all) / correct_all.size
+
+    # Accuracy without octave errors 
+    # Octave error = non-zero multiple of 12 semitones
+    is_octave_error = (np.mod(diff_semitones, 12) == 0) & (diff_semitones != 0)
+
+    non_octave_mask = ~is_octave_error
+    if not np.any(non_octave_mask):
+        acc_without_octave = np.nan
+    else:
+        correct_non_oct = correct_all & non_octave_mask
+        acc_without_octave = np.sum(correct_non_oct) / np.sum(non_octave_mask)
+
+    return acc_with_octave, acc_without_octave
 
 def computeTemporalFmeasure(est_onsets, ref_onsets, tolerance=0.05):
     """Compute F-measure between estimated and reference onsets
